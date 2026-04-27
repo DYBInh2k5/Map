@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bản Đồ Thế Giới - Geography</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 28px;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .search-container {
+            position: relative;
+            width: 350px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 20px 12px 45px;
+            border: 2px solid #00d9ff;
+            border-radius: 25px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+
+        .search-input:focus {
+            background: rgba(255,255,255,0.15);
+            box-shadow: 0 0 20px rgba(0,217,255,0.3);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            opacity: 0.7;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #16213e;
+            border-radius: 10px;
+            margin-top: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 2000;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            transition: background 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: rgba(0,217,255,0.2);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-name {
+            font-weight: 600;
+            color: #00d9ff;
+        }
+
+        .result-info {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.6);
+            margin-top: 3px;
+        }
+
+        .map-container {
+            position: relative;
+            height: calc(100vh - 70px);
+            width: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #0a0a1a;
+        }
+
+        .leaflet-container {
+            background: #0a0a1a;
+        }
+
+        .country-info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 380px;
+            background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            border: 1px solid rgba(0,217,255,0.2);
+        }
+
+        .country-info-panel.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0,217,255,0.3);
+        }
+
+        .flag-container {
+            width: 100%;
+            height: 180px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .flag-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .country-name {
+            font-size: 1.8rem;
+            color: #00d9ff;
+            margin-bottom: 5px;
+        }
+
+        .country-native {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.6);
+            font-style: italic;
+        }
+
+        .close-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            background: #ff4757;
+            transform: rotate(90deg);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .info-item {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.1rem;
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .info-item.full-width {
+            grid-column: span 2;
+        }
+
+        .country-description {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.85);
+            border-left: 3px solid #00d9ff;
+        }
+
+        .geography-title {
+            font-size: 1rem;
+            color: #00d9ff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            background: rgba(22, 33, 62, 0.95);
+            padding: 15px 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .legend-title {
+            font-size: 0.85rem;
+            color: #00d9ff;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(0,217,255,0.2);
+            border-top-color: #00d9ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            color: #00d9ff;
+            font-size: 1.1rem;
+        }
+
+        .coordinates {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            background: rgba(22, 33, 62, 0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.7);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* City Marker Styling */
+        .city-marker {
+            background: none;
+            border: none;
+        }
+
+        .city-dot {
+            width: 8px;
+            height: 8px;
+            background: #ff4757;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ff4757;
+        }
+
+        .city-label {
+            position: absolute;
+            left: 12px;
+            top: -5px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .leaflet-marker-icon:hover .city-label {
+            opacity: 1;
+        }
+
+        /* Custom Leaflet Control Style */
+        .leaflet-control-layers {
+            background: rgba(22, 33, 62, 0.9) !important;
+            color: #fff !important;
+            border: 1px solid rgba(0,217,255,0.3) !important;
+            border-radius: 10px !important;
+            padding: 10px !important;
+            font-family: inherit !important;
+        }
+
+        .leaflet-control-layers-expanded {
+            padding: 15px !important;
+        }
+
+        .view-map-btn {
+            width: 100%;
+            margin-top: 20px;
+            padding: 12px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            border: none;
+            border-radius: 10px;
+            color: #16213e;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .view-map-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,255,136,0.4);
+            filter: brightness(1.1);
+        }
+
+        .view-map-btn:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .search-container {
+                width: 100%;
+            }
+
+            .country-info-panel {
+                width: calc(100% - 40px);
+                right: 20px;
+                left: 20px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .info-item.full-width {
+                grid-column: span 1;
+            }
+        }
+    </style>
+
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Đang tải bản đồ...</div>
+    </div>
+
+    <header class="header">
+        <div class="logo">
+            <span class="logo-icon">🌍</span>
+            <h1>Bản Đồ Thế Giới</h1>
+        </div>
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="searchInput" placeholder="Tìm kiếm quốc gia, thành phố...">
+            <div class="search-results" id="searchResults"></div>
+        </div>
+    </header>
+
+    <div class="map-container">
+        <div id="map"></div>
+        
+        <div class="country-info-panel" id="countryPanel">
+            <div class="panel-header">
+                <div>
+                    <div class="country-name" id="countryName">-</div>
+                    <div class="country-native" id="countryNative">-</div>
+                </div>
+                <button class="close-btn" id="closePanel">×</button>
+            </div>
+            
+            <div class="flag-container">
+                <img src="" alt="Flag" class="flag-img" id="countryFlag">
+            </div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">🏛️ Thủ đô</div>
+                    <div class="info-value" id="countryCapital">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">👥 Dân số</div>
+                    <div class="info-value" id="countryPopulation">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">📐 Diện tích</div>
+                    <div class="info-value" id="countryArea">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">🕒 Múi giờ</div>
+                    <div class="info-value" id="countryTimezone">-</div>
+                </div>
+                <div class="info-item full-width">
+                    <div class="info-label">🗣️ Ngôn ngữ</div>
+                    <div class="info-value" id="countryLanguages">-</div>
+                </div>
+                <div class="info-item full-width">
+                    <div class="info-label">💰 Đơn vị tiền tệ</div>
+                    <div class="info-value" id="countryCurrency">-</div>
+                </div>
+            </div>
+
+
+            <div class="country-description" id="countryDescription">
+                <div class="geography-title">📖 Giới thiệu</div>
+                <p id="descriptionText"></p>
+            </div>
+
+            <button class="view-map-btn" id="viewOnMap">📍 Xem trên bản đồ</button>
+        </div>
+
+        <div class="legend">
+            <div class="legend-title">Chú thích</div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4a90d9;"></div>
+                <span>Quốc gia trên thế giới</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #2d5a87;"></div>
+                <span>Khu vực được chọn</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #1a3a5c;"></div>
+                <span>Vùng biển</span>
+            </div>
+        </div>
+
+        <div class="coordinates" id="coordinates">
+            Vĩ độ: 0 | Kinh độ: 0
+        </div>
+    </div>
+
+    <script>
+        // API Base URLs
+        const REST_COUNTRIES_API = 'https://restcountries.com/v3.1';
+        const WIKIPEDIA_API = 'https://vi.wikipedia.org/api/rest_v1/page/summary';
+
+        // Map Layers
+        const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+
+        const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        });
+
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
+        });
+
+        const map = L.map('map', {
+            center: [20, 0],
+            zoom: 2,
+            minZoom: 2,
+            maxZoom: 18,
+            worldCopyJump: true,
+            layers: [darkLayer]
+        });
+
+        const baseLayers = {
+            "Bản đồ tối": darkLayer,
+            "Bản đồ đường phố": streetLayer,
+            "Bản đồ vệ tinh": satelliteLayer
+        };
+
+        L.control.layers(baseLayers).addTo(map);
+
+        let countriesDataCache = null;
+        let currentHighlight = null;
+        let citiesLayer = L.layerGroup().addTo(map);
+
+        // Major Cities Data
+        const majorCities = [
+            { name: "Hà Nội", country: "Vietnam", coords: [21.0285, 105.8542] },
+            { name: "TP. Hồ Chí Minh", country: "Vietnam", coords: [10.8231, 106.6297] },
+            { name: "Đà Nẵng", country: "Vietnam", coords: [16.0544, 108.2022] },
+            { name: "Cần Thơ", country: "Vietnam", coords: [10.0371, 105.7882] },
+            { name: "Hải Phòng", country: "Vietnam", coords: [20.8449, 106.6881] },
+            { name: "Washington D.C.", country: "United States", coords: [38.8951, -77.0364] },
+            { name: "New York", country: "United States", coords: [40.7128, -74.0060] },
+            { name: "Los Angeles", country: "United States", coords: [34.0522, -118.2437] },
+            { name: "Chicago", country: "United States", coords: [41.8781, -87.6298] },
+            { name: "London", country: "United Kingdom", coords: [51.5074, -0.1278] },
+            { name: "Paris", country: "France", coords: [48.8566, 2.3522] },
+            { name: "Tokyo", country: "Japan", coords: [35.6762, 139.6503] },
+            { name: "Osaka", country: "Japan", coords: [34.6937, 135.5023] },
+            { name: "Beijing", country: "China", coords: [39.9042, 116.4074] },
+            { name: "Shanghai", country: "China", coords: [31.2304, 121.4737] },
+            { name: "Hong Kong", country: "China", coords: [22.3193, 114.1694] },
+            { name: "Moscow", country: "Russia", coords: [55.7558, 37.6173] },
+            { name: "Seoul", country: "South Korea", coords: [37.5665, 126.9780] },
+            { name: "Bangkok", country: "Thailand", coords: [13.7563, 100.5018] },
+            { name: "Singapore", country: "Singapore", coords: [1.3521, 103.8198] },
+            { name: "Kuala Lumpur", country: "Malaysia", coords: [3.1390, 101.6869] },
+            { name: "Jakarta", country: "Indonesia", coords: [-6.2088, 106.8456] },
+            { name: "Manila", country: "Philippines", coords: [14.5995, 120.9842] },
+            { name: "Sydney", country: "Australia", coords: [-33.8688, 151.2093] },
+            { name: "Melbourne", country: "Australia", coords: [-37.8136, 144.9631] },
+            { name: "Berlin", country: "Germany", coords: [52.5200, 13.4050] },
+            { name: "Munich", country: "Germany", coords: [48.1351, 11.5820] },
+            { name: "Rome", country: "Italy", coords: [41.9028, 12.4964] },
+            { name: "Madrid", country: "Spain", coords: [40.4168, -3.7038] },
+            { name: "Barcelona", country: "Spain", coords: [41.3851, 2.1734] },
+            { name: "Cairo", country: "Egypt", coords: [30.0444, 31.2357] },
+            { name: "Cape Town", country: "South Africa", coords: [-33.9249, 18.4241] },
+            { name: "Johannesburg", country: "South Africa", coords: [-26.2041, 28.0473] },
+            { name: "Rio de Janeiro", country: "Brazil", coords: [-22.9068, -43.1729] },
+            { name: "Sao Paulo", country: "Brazil", coords: [-23.5505, -46.6333] },
+            { name: "Buenos Aires", country: "Argentina", coords: [-34.6037, -58.3816] },
+            { name: "Mexico City", country: "Mexico", coords: [19.4326, -99.1332] },
+            { name: "Toronto", country: "Canada", coords: [43.6532, -79.3832] },
+            { name: "Vancouver", country: "Canada", coords: [49.2827, -123.1207] },
+            { name: "Dubai", country: "United Arab Emirates", coords: [25.2048, 55.2708] },
+            { name: "Mumbai", country: "India", coords: [19.0760, 72.8777] },
+            { name: "New Delhi", country: "India", coords: [28.6139, 77.2090] },
+            { name: "Istanbul", country: "Turkey", coords: [41.0082, 28.9784] },
+            { name: "Dubai", country: "United Arab Emirates", coords: [25.2048, 55.2708] },
+            { name: "Singapore", country: "Singapore", coords: [1.3521, 103.8198] }
+        ];
+
+        function createCityMarker(city) {
+            const icon = L.divIcon({
+                className: 'city-marker',
+                html: `<div class="city-dot"></div><div class="city-label">${city.name}</div>`,
+                iconSize: [8, 8],
+                iconAnchor: [4, 4]
+            });
+
+            return L.marker(city.coords, { icon: icon })
+                .bindPopup(`<b>${city.name}</b><br>${city.country}`)
+                .on('click', function() {
+                    map.setView(city.coords, 6);
+                    showCountryInfo(city.country);
+                });
+        }
+
+        function initCities() {
+            majorCities.forEach(city => {
+                createCityMarker(city).addTo(citiesLayer);
+            });
+        }
+
+        async function fetchAllCountries() {
+            try {
+                const response = await fetch(`${REST_COUNTRIES_API}/all?fields=name,cca2,cca3,capital,population,area,flags,currencies,languages,timezones,region,subregion`);
+                const data = await response.json();
+                countriesDataCache = data;
+                return data;
+            } catch (error) {
+                console.error('Error fetching countries:', error);
+                return null;
+            }
+        }
+
+        function formatPopulation(num) {
+            if (num >= 1000000000) return (num / 1000000000).toFixed(1) + ' tỷ';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + ' triệu';
+            return num.toLocaleString();
+        }
+
+        function formatArea(num) {
+            return num.toLocaleString() + ' km²';
+        }
+
+        async function getWikipediaDescription(countryName) {
+            try {
+                // Try to get Vietnamese summary first
+                const response = await fetch(`${WIKIPEDIA_API}/${encodeURIComponent(countryName)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.extract;
+                }
+                return null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        let currentLayer = null;
+
+        async function showCountryInfo(countryName, isoCode) {
+            const panel = document.getElementById('countryPanel');
+            panel.classList.add('active');
+
+            // Find layer for this country to store for "View on Map"
+            countriesLayer.eachLayer(layer => {
+                const featName = layer.feature.properties.ADMIN || layer.feature.properties.name;
+                const featCode = layer.feature.properties.ISO_A3 || layer.feature.id;
+                if (featName === countryName || featCode === isoCode) {
+                    currentLayer = layer;
+                }
+            });
+
+            // Set loading state
+            document.getElementById('countryName').textContent = countryName;
+            document.getElementById('countryNative').textContent = 'Đang tải...';
+            document.getElementById('countryCapital').textContent = '...';
+            document.getElementById('countryPopulation').textContent = '...';
+            document.getElementById('countryArea').textContent = '...';
+            document.getElementById('countryTimezone').textContent = '...';
+            document.getElementById('countryLanguages').textContent = '...';
+            document.getElementById('countryCurrency').textContent = '...';
+            document.getElementById('descriptionText').textContent = 'Đang tải thông tin...';
+            document.getElementById('countryFlag').src = '';
+
+            // Find data in cache or fetch
+            let data = countriesDataCache ? countriesDataCache.find(c => 
+                c.name.common === countryName || 
+                c.cca2 === isoCode || 
+                c.cca3 === isoCode
+            ) : null;
+
+            if (!data) {
+                try {
+                    const res = await fetch(`${REST_COUNTRIES_API}/name/${encodeURIComponent(countryName)}?fullText=true`);
+                    const result = await res.json();
+                    data = result[0];
+                } catch (e) {
+                    console.error('API Error:', e);
+                }
+            }
+
+            if (data) {
+                const nativeNames = Object.values(data.name.nativeName || {}).map(n => n.common).join(', ');
+                const languages = Object.values(data.languages || {}).join(', ');
+                const currencies = Object.values(data.currencies || {}).map(c => `${c.name} (${c.symbol})`).join(', ');
+                const timezones = data.timezones?.join(', ') || 'N/A';
+                const capital = data.capital?.[0] || 'N/A';
+
+                document.getElementById('countryName').textContent = data.name.common;
+                document.getElementById('countryNative').textContent = nativeNames || data.name.official;
+                document.getElementById('countryCapital').textContent = capital;
+                document.getElementById('countryPopulation').textContent = formatPopulation(data.population);
+                document.getElementById('countryArea').textContent = formatArea(data.area);
+                document.getElementById('countryTimezone').textContent = timezones;
+                document.getElementById('countryLanguages').textContent = languages || 'N/A';
+                document.getElementById('countryCurrency').textContent = currencies || 'N/A';
+                
+                if (data.flags?.svg || data.flags?.png) {
+                    document.getElementById('countryFlag').src = data.flags.svg || data.flags.png;
+                }
+
+                // Get description from Wikipedia
+                const description = await getWikipediaDescription(data.name.common);
+                if (description) {
+                    document.getElementById('descriptionText').textContent = description;
+                } else {
+                    const regionInfo = `${data.region || ''}${data.subregion ? ' - ' + data.subregion : ''}`;
+                    document.getElementById('descriptionText').textContent = 
+                        `${data.name.common} là một quốc gia thuộc khu vực ${regionInfo}. Thủ đô là ${capital}. ` +
+                        `Với dân số khoảng ${formatPopulation(data.population)} và diện tích ${formatArea(data.area)}.`;
+                }
+            } else {
+                document.getElementById('countryNative').textContent = '';
+                document.getElementById('countryCapital').textContent = 'Không tìm thấy dữ liệu';
+                document.getElementById('descriptionText').textContent = 'Thông tin về quốc gia này hiện không khả dụng qua API.';
+            }
+        }
+
+        function style(feature) {
+            return {
+                fillColor: '#4a90d9',
+                weight: 1,
+                opacity: 1,
+                color: '#ffffff',
+                dashArray: '3',
+                fillOpacity: 0.4
+            };
+        }
+
+        function highlightFeature(e) {
+            const layer = e.target;
+            if (currentHighlight && currentHighlight !== layer) {
+                countriesLayer.resetStyle(currentHighlight);
+            }
+            
+            layer.setStyle({
+                fillColor: '#2d5a87',
+                weight: 3,
+                color: '#00d9ff',
+                fillOpacity: 0.7
+            });
+            currentHighlight = layer;
+            layer.bringToFront();
+        }
+
+        function resetHighlight(e) {
+            const layer = e.target;
+            if (currentHighlight !== layer) {
+                countriesLayer.resetStyle(layer);
+            }
+        }
+
+        async function onCountryClick(e) {
+            const feature = e.target.feature;
+            const countryName = feature.properties.ADMIN || feature.properties.name;
+            const isoCode = feature.properties.ISO_A3 || feature.id;
+            
+            showCountryInfo(countryName, isoCode);
+            map.fitBounds(e.target.getBounds(), { padding: [50, 50], maxZoom: 5 });
+            highlightFeature(e);
+        }
+
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: onCountryClick
+            });
+        }
+
+        const countriesLayer = L.geoJSON(null, {
+            style: style,
+            onEachFeature: onEachFeature
+        }).addTo(map);
+
+        // Initialization
+        async function init() {
+            initCities();
+            await fetchAllCountries();
+
+            fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    countriesLayer.addData(data);
+                    document.getElementById('loading').classList.add('hidden');
+                })
+                .catch(error => {
+                    console.error('Error loading GeoJSON:', error);
+                    document.getElementById('loading').innerHTML = '<div class="loading-text">Đã xảy ra lỗi khi tải bản đồ</div>';
+                });
+        }
+
+        init();
+
+        // UI Handlers
+        document.getElementById('closePanel').addEventListener('click', function() {
+            document.getElementById('countryPanel').classList.remove('active');
+            if (currentHighlight) {
+                countriesLayer.resetStyle(currentHighlight);
+                currentHighlight = null;
+            }
+            map.setView([20, 0], 2);
+        });
+
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            
+            if (query.length < 2) {
+                searchResults.classList.remove('active');
+                return;
+            }
+
+            if (!countriesDataCache) return;
+
+            // Search countries
+            const countryMatches = countriesDataCache.filter(country => 
+                country.name.common.toLowerCase().includes(query) ||
+                (country.capital && country.capital[0].toLowerCase().includes(query))
+            ).map(c => ({
+                type: 'country',
+                name: c.name.common,
+                code: c.cca3,
+                info: `Thủ đô: ${c.capital ? c.capital[0] : 'N/A'} | Dân số: ${formatPopulation(c.population)}`
+            }));
+
+            // Search cities
+            const cityMatches = majorCities.filter(city => 
+                city.name.toLowerCase().includes(query)
+            ).map(c => ({
+                type: 'city',
+                name: c.name,
+                country: c.country,
+                coords: c.coords,
+                info: `Thành phố thuộc ${c.country}`
+            }));
+
+            const allMatches = [...countryMatches, ...cityMatches].slice(0, 10);
+
+            if (allMatches.length === 0) {
+                searchResults.innerHTML = '<div class="search-result-item"><span class="result-name">Không tìm thấy kết quả</span></div>';
+            } else {
+                searchResults.innerHTML = allMatches.map(match => `
+                    <div class="search-result-item" 
+                         data-type="${match.type}" 
+                         data-name="${match.name}" 
+                         ${match.code ? `data-code="${match.code}"` : ''}
+                         ${match.coords ? `data-coords="${JSON.stringify(match.coords)}"` : ''}
+                         ${match.country ? `data-country="${match.country}"` : ''}>
+                        <div class="result-name">${match.type === 'city' ? '📍 ' : '🏳️ '}${match.name}</div>
+                        <div class="result-info">${match.info}</div>
+                    </div>
+                `).join('');
+            }
+
+            searchResults.classList.add('active');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.classList.remove('active');
+            }
+        });
+
+        searchResults.addEventListener('click', function(e) {
+            const item = e.target.closest('.search-result-item');
+            if (item && item.dataset.name) {
+                const type = item.dataset.type;
+                const name = item.dataset.name;
+                
+                searchInput.value = name;
+                searchResults.classList.remove('active');
+                
+                if (type === 'country') {
+                    const code = item.dataset.code;
+                    let found = false;
+                    countriesLayer.eachLayer(function(layer) {
+                        const featName = layer.feature.properties.ADMIN || layer.feature.properties.name;
+                        const featCode = layer.feature.properties.ISO_A3 || layer.feature.id;
+                        if (featName === name || featCode === code) {
+                            map.fitBounds(layer.getBounds(), { padding: [50, 50], maxZoom: 5 });
+                            highlightFeature({ target: layer });
+                            showCountryInfo(name, code);
+                            found = true;
+                        }
+                    });
+
+                    if (!found) {
+                        showCountryInfo(name, code);
+                    }
+                } else if (type === 'city') {
+                    const coords = JSON.parse(item.dataset.coords);
+                    const country = item.dataset.country;
+                    map.setView(coords, 8);
+                    showCountryInfo(country);
+                    
+                    // Highlight the country if possible
+                    countriesLayer.eachLayer(function(layer) {
+                        const featName = layer.feature.properties.ADMIN || layer.feature.properties.name;
+                        if (featName === country) {
+                            highlightFeature({ target: layer });
+                        }
+                    });
+                }
+            }
+        });
+
+        document.getElementById('viewOnMap').addEventListener('click', function() {
+            if (currentLayer) {
+                map.fitBounds(currentLayer.getBounds(), { padding: [50, 50], maxZoom: 5 });
+                highlightFeature({ target: currentLayer });
+            }
+        });
+
+        map.on('mousemove', function(e) {
+            const lat = e.latlng.lat.toFixed(4);
+            const lng = e.latlng.lng.toFixed(4);
+            document.getElementById('coordinates').textContent = `Vĩ độ: ${lat} | Kinh độ: ${lng}`;
+        });
+    </script>
+</body>
+</html>
